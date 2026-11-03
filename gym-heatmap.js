@@ -12,7 +12,7 @@ const COLORS = {
   visit: new Color("#39d353"),
   todayOutline: new Color("#8b949e"),
   future: new Color("#161b22"),
-  missed: new Color("#f85149", 0.5),
+  missed: new Color("#f0883e", 0.7),
   divider: new Color("#ffffff", 0.2),
   text: new Color("#e6edf3"),
   title: new Color("#e6edf3", 0.5),
@@ -45,7 +45,7 @@ function saveVisits(visits) {
   fm.writeString(path, JSON.stringify([...visits].sort()));
 }
 
-// Days you set by hand: "missed" (always red) and "rest" (never red).
+// Days you marked "didn't go" by hand (also used for days before your first visit).
 const statusPath = fm.joinPath(fm.documentsDirectory(), "gym-status.json");
 let STATUS = { missed: [], rest: [] };
 
@@ -120,20 +120,18 @@ function stats(visits) {
   };
 }
 
-// Missed days: from the MISSED_DAYS-th day in a row without the gym onward
-// (the same days that trigger a reminder). Today is never marked as missed.
+// Two statuses only: you went, or you didn't.
+// Every past day since your first visit without a visit counts as "didn't go".
+// Today only turns orange once it's over.
 function missedDays(visits) {
   const missed = new Set();
-  const rest = new Set(STATUS.rest);
   const past = [...visits].filter(k => k <= todayKey).sort();
   if (past.length) {
     const p = past[0].split("-");
     let d = new Date(+p[0], +p[1] - 1, +p[2]);
-    let gap = 0;
     while (key(d) < todayKey) {
       const k = key(d);
-      if (visits.has(k)) gap = 0;
-      else if (!rest.has(k) && ++gap >= MISSED_DAYS) missed.add(k);
+      if (!visits.has(k)) missed.add(k);
       d = addDays(d, 1);
     }
   }
@@ -337,7 +335,7 @@ function buildWidget(visits, family) {
 
   // ----- Lock Screen widgets -----
   if (family === "accessoryInline") {
-    w.addText(`Gym ${s.week}/${WEEKLY_GOAL} this week · ${s.streak} wk streak`);
+    w.addText(`Gym ${s.week}/${WEEKLY_GOAL} this week · ${s.month} this month`);
     return w;
   }
   if (family === "accessoryCircular") {
@@ -345,7 +343,7 @@ function buildWidget(visits, family) {
   }
   if (family === "accessoryRectangular") {
     w.setPadding(2, 2, 2, 2);
-    const t = w.addText(`Gym · ${s.week} this week · ${s.streak} wk streak`);
+    const t = w.addText(`Gym · ${s.week}/${WEEKLY_GOAL} this week · ${s.month} this month`);
     t.font = Font.boldSystemFont(11);
     t.lineLimit = 1;
     t.minimumScaleFactor = 0.7;
@@ -368,11 +366,7 @@ function buildWidget(visits, family) {
 
   const header = w.addStack();
   header.centerAlignContent();
-  addText(header, "Gym", Font.boldSystemFont(14), COLORS.title);
-  header.addSpacer();
-  addText(header,
-    small ? `${s.streak} wk streak` : `${s.streak} wk streak · ${s.week} this week`,
-    Font.mediumSystemFont(11), COLORS.sub);
+  addText(header, "Gym", Font.boldSystemFont(11), COLORS.title);
 
   w.addSpacer(small ? 6 : 8);
 
@@ -387,7 +381,7 @@ function buildWidget(visits, family) {
 
   if (small) {
     w.addSpacer();
-    addText(w, `${s.week} this week · ${s.month} mo`, Font.systemFont(10), COLORS.sub);
+    addText(w, `${s.week} this week · ${s.month} this month`, Font.systemFont(9), COLORS.sub);
   } else if (large) {
     w.addSpacer(14);
     const row = w.addStack();
@@ -399,13 +393,18 @@ function buildWidget(visits, family) {
       addText(col, label, Font.systemFont(11), COLORS.sub);
     });
     w.addSpacer();
-    addText(w, s.lastText, Font.mediumSystemFont(12), COLORS.sub);
+    const lf = w.addStack();
+    addText(lf, `${s.total} total`, Font.systemFont(9), COLORS.sub);
+    lf.addSpacer();
+    addText(lf, s.lastText, Font.systemFont(9), COLORS.sub);
   } else {
     w.addSpacer();
     const f = w.addStack();
-    addText(f, s.lastText, Font.systemFont(11), COLORS.sub);
+    addText(f, `${s.week} this week`, Font.systemFont(9), COLORS.sub);
     f.addSpacer();
-    addText(f, `${s.month} this month · ${s.total} total`, Font.systemFont(11), COLORS.sub);
+    addText(f, `${s.month} this month`, Font.systemFont(9), COLORS.sub);
+    f.addSpacer();
+    addText(f, s.lastText, Font.systemFont(9), COLORS.sub);
   }
   return w;
 }
@@ -439,7 +438,7 @@ const PAGE = `<!doctype html>
        display:flex; align-items:center; justify-content:center;
        font-size:12px; color:var(--sub); }
   .c.v { background:var(--visit); color:#0d1117; font-weight:700; }
-  .c.m { background:rgba(248,81,73,0.5); color:var(--text); }
+  .c.m { background:rgba(240,136,62,0.7); color:var(--text); }
   .c.f { background:transparent; color:#30363d; }
   .c.t { box-shadow:inset 0 0 0 2px var(--sub); color:var(--text); }
   .c.sel { box-shadow:0 0 0 2px var(--text); }
@@ -448,12 +447,11 @@ const PAGE = `<!doctype html>
   .card { background:var(--card); border-radius:14px; padding:14px; }
   .card .d { font-weight:600; }
   .card .s { color:var(--sub); font-size:13px; margin-top:2px; }
-  .seg { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:12px; }
+  .seg { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-top:12px; }
   .seg button { border:0; border-radius:10px; padding:10px 6px; font-size:14px; font-weight:600;
                 background:#21262d; color:var(--sub); white-space:nowrap; }
   .seg button.on.gym { background:var(--visit); color:#0d1117; }
-  .seg button.on.missed { background:rgba(248,81,73,0.5); color:var(--text); }
-  .seg button.on.rest { background:#30363d; color:var(--text); box-shadow:inset 0 0 0 1.5px var(--sub); }
+  .seg button.on.missed { background:rgba(240,136,62,0.7); color:var(--text); }
   .hint { color:var(--sub); font-size:12px; margin-top:8px; text-align:center; }
 </style></head>
 <body>
@@ -462,7 +460,7 @@ const PAGE = `<!doctype html>
     <div class="stats">
       <div class="stat"><b id="sWeek">0</b><span>this week</span></div>
       <div class="stat"><b id="sMonth">0</b><span>this month</span></div>
-      <div class="stat"><b id="sStreak">0</b><span>week streak</span></div>
+      <div class="stat"><b id="sStreak">0</b><span>total</span></div>
       <div class="stat"><b id="sYear">0</b><span>last 12 months</span></div>
     </div>
   </div>
@@ -474,12 +472,11 @@ const PAGE = `<!doctype html>
     <div class="card">
       <div class="d" id="iDate"></div><div class="s" id="iStatus"></div>
       <div class="seg">
-        <button class="gym" data-s="gym">✅ Gym</button>
-        <button class="missed" data-s="missed">❌ Missed</button>
-        <button class="rest" data-s="rest">😴 Rest</button>
+        <button class="gym" data-s="gym">Went</button>
+        <button class="missed" data-s="missed">Didn't go</button>
       </div>
     </div>
-    <div class="hint">Tap a day, then choose its status. Changes save when you close.</div>
+    <div class="hint">Tap a day, then choose Went or Didn't go. Changes save when you close.</div>
   </div>
 <script>
   window.state = new Set(__DATA__);
@@ -561,11 +558,10 @@ const PAGE = `<!doctype html>
     var missed = {};
     var past = Array.from(state).filter(function (k) { return k <= todayKey; }).sort();
     var p = (past[0] || todayKey).split("-");
-    var d = new Date(+p[0], +p[1] - 1, +p[2]), gap = 0;
+    var d = new Date(+p[0], +p[1] - 1, +p[2]);
     while (key(d) < todayKey) {
       var k = key(d);
-      if (state.has(k)) gap = 0;
-      else if (!rset.has(k) && ++gap >= __MISSED__) missed[k] = true;
+      if (!state.has(k)) missed[k] = true;
       d = addDays(d, 1);
     }
     mset.forEach(function (k) { if (k <= todayKey && !state.has(k)) missed[k] = true; });
@@ -587,11 +583,12 @@ const PAGE = `<!doctype html>
     document.getElementById("sWeek").textContent = all.filter(function (k) { return k >= mondayKey && k <= todayKey; }).length;
     document.getElementById("sMonth").textContent = all.filter(function (k) { return k.indexOf(monthPrefix) === 0; }).length;
     document.getElementById("sYear").textContent = all.filter(function (k) { return k > yearAgo && k <= todayKey; }).length;
-    document.getElementById("sStreak").textContent = weekStreak();
-    var current = state.has(sel) ? "gym" : missed[sel] ? "missed" : "rest";
+    document.getElementById("sStreak").textContent = all.filter(function (k) { return k <= todayKey; }).length;
+    var current = state.has(sel) ? "gym" : missed[sel] ? "missed" : "";
     document.getElementById("iDate").textContent = fmt(sel) + (sel === todayKey ? " (today)" : "");
     document.getElementById("iStatus").textContent =
-      current === "gym" ? "Gym day ✅" : current === "missed" ? "Missed day ❌" : "Rest day 😴";
+      current === "gym" ? "Went to the gym" : current === "missed" ? "Didn't go" :
+      sel === todayKey ? "Not logged yet" : "Not tracked";
     Array.prototype.forEach.call(document.querySelectorAll(".seg button"), function (b) {
       b.className = b.dataset.s + (b.dataset.s === current ? " on" : "");
     });
@@ -601,8 +598,7 @@ const PAGE = `<!doctype html>
     b.addEventListener("click", function () {
       state.delete(sel); mset.delete(sel); rset.delete(sel);
       if (b.dataset.s === "gym") state.add(sel);
-      else if (b.dataset.s === "missed") mset.add(sel);
-      else rset.add(sel);
+      else mset.add(sel);
       render();
     });
   });
@@ -662,7 +658,7 @@ async function notifyLogged(visits) {
 // REMINDER_HOUR until the next visit. Reminders are scheduled ahead of time
 // and re-planned whenever the script runs (visit logged, widget refresh, app opened).
 const MISSED_DAYS = 3;
-const WEEKLY_GOAL = 3;     // gym visits per week for the Lock Screen ring
+const WEEKLY_GOAL = 7;     // Lock Screen shows gym days this week out of 7
 const REMINDER_HOUR = 22; // 10 pm
 const REMINDER_PREFIX = "gym-reminder-";
 const PLAN_AHEAD_DAYS = 30;
