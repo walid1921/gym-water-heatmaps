@@ -22,12 +22,14 @@ Free, no Apple Developer account, no Mac needed, and nothing to re-sign every we
 - **Notifications**
   - "🏋️ Gym day registered" when you arrive (once per day).
   - Duolingo-style nudge at 10 pm every night after 3 days without the gym, until you go again.
-- **Widget sizes**: small, medium, large, plus Lock Screen (circular, rectangular, inline).
+- **Widget sizes**: small, medium, large.
+- **Lock Screen**: progress ring for visits this week (circular), mini heatmap of the last 16 weeks (rectangular), and a one-line summary (inline).
 
 ### Settings (near the middle of the script)
 ```js
 const MISSED_DAYS = 3;     // days without the gym before reminders / red days start
 const REMINDER_HOUR = 22;  // reminder time (10 pm)
+const WEEKLY_GOAL = 3;     // visits per week for the Lock Screen ring
 ```
 
 ---
@@ -40,7 +42,7 @@ const REMINDER_HOUR = 22;  // reminder time (10 pm)
 - **Interactive calendar**: big **+1 glass** / **−1** buttons; tap any past day to fix its count.
 - **Smart reminders** at 9, 11, 13, 15, 17, 19 and 21 o'clock, only when you're behind schedule.
   Long-press a reminder and tap **+1 glass 💧** to log straight from the notification.
-- **Lock Screen widgets**: `3/8` circular, rectangular and inline.
+- **Lock Screen**: progress ring for today's glasses (circular), mini heatmap of the last 16 weeks (rectangular), and a one-line summary (inline).
 
 ### Settings (top of the script)
 ```js
@@ -66,6 +68,12 @@ const REMINDER_HOURS = [9, 11, 13, 15, 17, 19, 21];
    - **Script**: `Gym Heatmap` or `Water Heatmap`
    - **When Interacting**: `Run Script`
    - **Parameter**: leave empty
+
+### Lock Screen widgets
+1. Long-press the Lock Screen → **Customize** → **Lock Screen**.
+2. Tap the widget area under the clock, choose **Scriptable**, and add the round or rectangular size.
+3. Tap the added widget and set **Script** to `Gym Heatmap` or `Water Heatmap`.
+4. For the one-line version, tap the date above the clock and choose **Scriptable**.
 
 ### 3. Gym: log automatically when you arrive
 1. **Shortcuts → Automation → + → Arrive**, choose your gym, radius about 100–150 m.

@@ -200,6 +200,77 @@ function drawProgress(width, value) {
   return ctx.getImage();
 }
 
+// ---------- Lock Screen drawing ----------
+// Lock Screen widgets are shown in one tint color, so shades are done with opacity.
+function drawMiniGrid(alphaFor, weeks, step) {
+  const gap = 2, cell = step - gap;
+  const ctx = new DrawContext();
+  ctx.size = new Size(weeks * step - gap, 7 * step - gap);
+  ctx.opaque = false;
+  ctx.respectScreenScale = true;
+  const start = addDays(mondayOf(today), -(weeks - 1) * 7);
+  for (let c = 0; c < weeks; c++) {
+    for (let r = 0; r < 7; r++) {
+      const d = addDays(start, c * 7 + r);
+      if (d > today) continue;
+      const k = key(d);
+      const p = new Path();
+      p.addRoundedRect(new Rect(c * step, r * step, cell, cell), 1.5, 1.5);
+      ctx.addPath(p);
+      ctx.setFillColor(new Color("#ffffff", alphaFor(k)));
+      ctx.fillPath();
+      if (k === todayKey) {
+        ctx.addPath(p);
+        ctx.setStrokeColor(Color.white());
+        ctx.setLineWidth(1);
+        ctx.strokePath();
+      }
+    }
+  }
+  return ctx.getImage();
+}
+
+function drawRing(value, size) {
+  const lw = 5, rr = size / 2 - lw / 2 - 1, cx = size / 2, cy = size / 2;
+  const ctx = new DrawContext();
+  ctx.size = new Size(size, size);
+  ctx.opaque = false;
+  ctx.respectScreenScale = true;
+  const arc = (from, to, color) => {
+    const p = new Path();
+    const steps = Math.max(2, Math.ceil((to - from) * 60));
+    for (let i = 0; i <= steps; i++) {
+      const a = -Math.PI / 2 + 2 * Math.PI * (from + (to - from) * (i / steps));
+      const pt = new Point(cx + rr * Math.cos(a), cy + rr * Math.sin(a));
+      if (i === 0) p.move(pt); else p.addLine(pt);
+    }
+    ctx.addPath(p);
+    ctx.setStrokeColor(color);
+    ctx.setLineWidth(lw);
+    ctx.strokePath();
+  };
+  arc(0, 1, new Color("#ffffff", 0.25));
+  const v = Math.max(0, Math.min(1, value));
+  if (v > 0) arc(0, v, Color.white());
+  return ctx.getImage();
+}
+
+function ringWidget(w, value, big, small) {
+  w.addAccessoryWidgetBackground = true;
+  w.backgroundImage = drawRing(value, 64);
+  w.setPadding(0, 0, 0, 0);
+  const v = w.addStack();
+  v.layoutVertically();
+  v.centerAlignContent();
+  const row1 = v.addStack(); row1.addSpacer();
+  const a = row1.addText(big); a.font = Font.boldRoundedSystemFont(17); a.lineLimit = 1; a.minimumScaleFactor = 0.6;
+  row1.addSpacer();
+  const row2 = v.addStack(); row2.addSpacer();
+  const b = row2.addText(small); b.font = Font.mediumSystemFont(9); b.lineLimit = 1;
+  row2.addSpacer();
+  return w;
+}
+
 function widgetWidth(family) {
   const s = Device.screenSize().width;
   if (family === "small") return Math.round(s * 0.4);
@@ -222,28 +293,22 @@ function buildWidget(log, family) {
   w.refreshAfterDate = new Date(Date.now() + 30 * 60 * 1000);
 
   if (family === "accessoryInline") {
-    w.addText(`💧 ${s.today}/${GOAL} glasses`);
+    w.addText(`💧 ${s.today}/${GOAL} glasses · 🔥 ${s.streak}`);
     return w;
   }
   if (family === "accessoryCircular") {
-    w.addAccessoryWidgetBackground = true;
-    const v = w.addStack();
-    v.layoutVertically();
-    const a = v.addText(`${s.today}/${GOAL}`);
-    a.font = Font.boldRoundedSystemFont(18);
-    a.centerAlignText();
-    const b = v.addText("💧");
-    b.font = Font.systemFont(10);
-    b.centerAlignText();
-    return w;
+    return ringWidget(w, s.today / GOAL, `${s.today}/${GOAL}`, "💧");
   }
   if (family === "accessoryRectangular") {
-    const t = w.addText("💧 Water");
-    t.font = Font.boldSystemFont(13);
-    const a = w.addText(`${s.today}/${GOAL} glasses today`);
-    a.font = Font.systemFont(12);
-    const b = w.addText(`🔥 ${s.streak}-day goal streak`);
-    b.font = Font.systemFont(12);
+    w.setPadding(2, 2, 2, 2);
+    const t = w.addText(`💧 ${s.today}/${GOAL} today · 🔥 ${s.streak}`);
+    t.font = Font.boldSystemFont(11);
+    t.lineLimit = 1;
+    t.minimumScaleFactor = 0.7;
+    w.addSpacer(3);
+    const grid = drawMiniGrid(k => [0.18, 0.35, 0.55, 0.75, 1][level(log[k])], 16, 8);
+    const img = w.addImage(grid);
+    img.imageSize = grid.size;
     return w;
   }
 
