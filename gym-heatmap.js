@@ -329,9 +329,8 @@ function buildWidget(visits, family) {
   const w = new ListWidget();
   w.url = URLScheme.forRunningScript();
 
-  // Refresh just after midnight so the new day shows up
-  const tomorrow = addDays(today, 1);
-  w.refreshAfterDate = new Date(tomorrow.getTime() + 60 * 1000);
+  // Ask iOS to refresh again in 5 minutes (iOS decides the exact time)
+  w.refreshAfterDate = new Date(Date.now() + 5 * 60 * 1000);
 
   // ----- Lock Screen widgets -----
   if (family === "accessoryInline") {

@@ -296,7 +296,8 @@ function buildWidget(log, family) {
   const s = stats(log);
   const w = new ListWidget();
   w.url = URLScheme.forRunningScript();
-  w.refreshAfterDate = new Date(Date.now() + 30 * 60 * 1000);
+  // Ask iOS to refresh again in 5 minutes (iOS decides the exact time)
+  w.refreshAfterDate = new Date(Date.now() + 5 * 60 * 1000);
 
   if (family === "accessoryInline") {
     w.addText(`Water ${s.today}/${GOAL} · ${inARow(s.streak)}`);
