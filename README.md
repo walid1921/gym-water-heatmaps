@@ -40,8 +40,9 @@ const WEEKLY_GOAL = 7;     // Lock Screen shows gym days this week out of 7
 - **Widget**: same clean layout as the gym widget. Small dimmed title at the top; thin progress bar for today at the bottom with small stats (today `3/8` · "2 days in a row" · 7-day average).
 - **Days in a row**: how many days in a row you reached your goal (today counts once you reach it).
 - **Interactive calendar**: big **+1 glass** / **−1** buttons; tap any past day to fix its count.
+- **Time log**: tap a day to see when each glass was logged and how (notification, shortcut or app).
 - **Smart reminders** at 9, 11, 13, 15, 17, 19 and 21 o'clock, only when you're behind schedule.
-  Long-press a reminder and tap **+1 glass 💧** to log straight from the notification.
+  Tap a reminder (or long-press it and tap **+1 glass 💧**) to log a glass straight from the notification.
 - **Evening summary** at 21:30: 🎉 goal reached (with streak), 💧 "6/8, 2 more before bed?", or 😬 "only 2/8".
 - **Lock Screen**: progress ring for today's glasses (circular), mini heatmap of the last 16 weeks (rectangular), and a one-line summary (inline).
 
@@ -100,6 +101,7 @@ Everything is stored as small JSON files in **iCloud Drive → Scriptable** (or 
 | `gym-visits.json` | List of gym days, e.g. `["2026-11-02"]` |
 | `gym-status.json` | Days you marked *didn't go* by hand: `{ "missed": [...] }` |
 | `water-log.json` | Glasses per day, e.g. `{ "2026-11-03": 5 }` |
+| `water-times.json` | When each glass was logged, e.g. `{ "2026-11-03": [{ "t": "13:20", "s": "notification" }] }` |
 
 These files are personal data and are not part of this repository.
 
@@ -111,5 +113,8 @@ This repository is the source of truth. After changing a script here, copy it in
 ## Notes for developers
 - The interactive calendars are HTML pages shown in Scriptable's `WebView`; changes are read back with
   `evaluateJavaScript` after the page is closed.
+- A plain tap on a Scriptable notification only opens the app. To run code from a notification, give it an
+  `openURL` built from `URLScheme.forRunningScript()` plus a query parameter (e.g. `?add=1`), read via `args.queryParameters`.
+  Set `DEBUG = true` in `water-heatmap.js` to see what each run receives (notification link check).
 - Avoid naming page variables `log`: Scriptable injects its own `log()` into web pages and overwrites it.
 - Widgets are drawn with `DrawContext`, sized from `Device.screenSize()` so the grid fills the widget.

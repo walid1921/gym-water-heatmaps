@@ -58,6 +58,42 @@ function saveLog(log) {
   fm.writeString(path, JSON.stringify(clean));
 }
 
+// When each glass was logged: { "2026-11-03": [{ "t": "13:20", "s": "notification" }, ...] }
+const timesPath = fm.joinPath(fm.documentsDirectory(), "water-times.json");
+
+async function loadTimes() {
+  if (!fm.fileExists(timesPath)) return {};
+  try {
+    if (fm.isFileStoredIniCloud(timesPath)) await fm.downloadFileFromiCloud(timesPath);
+  } catch (e) {}
+  try {
+    return JSON.parse(fm.readString(timesPath)) || {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function saveTimes(times) {
+  const clean = {};
+  Object.keys(times).sort().forEach(k => { if (times[k] && times[k].length) clean[k] = times[k]; });
+  fm.writeString(timesPath, JSON.stringify(clean));
+}
+
+function clockNow() {
+  const d = new Date();
+  return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+}
+
+// Add or remove one glass today, keeping the time log in step.
+function addGlass(log, times, source) {
+  log[todayKey] = (log[todayKey] || 0) + 1;
+  (times[todayKey] = times[todayKey] || []).push({ t: clockNow(), s: source });
+}
+function removeGlass(log, times) {
+  log[todayKey] = Math.max(0, (log[todayKey] || 0) - 1);
+  if (times[todayKey] && times[todayKey].length) times[todayKey].pop();
+}
+
 // ---------- dates & stats ----------
 function key(d) {
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -349,7 +385,7 @@ function buildWidget(log, family) {
   const f = w.addStack();
   addText(f, `${s.today}/${GOAL} today`, Font.systemFont(9), COLORS.sub);
   f.addSpacer();
-  addText(f, inARow(s.streak), Font.systemFont(9), COLORS.sub);
+  addText(f, nextCupText(log), Font.systemFont(9), COLORS.sub);
   if (!small) {
     f.addSpacer();
     addText(f, `avg ${s.avg7}/day`, Font.systemFont(9), COLORS.sub);
@@ -363,13 +399,26 @@ const REMINDER_PREFIX = "water-reminder-";
 // Link behind the "+1 glass" button on notifications.
 // Built by hand so the "add" flag always reaches the script as a query parameter.
 function addGlassURL() {
-  return "scriptable:///run?scriptName=" + encodeURIComponent(Script.name()) + "&add=1";
+  // Start from Scriptable's own "run this script" link (known to work), then add the flag.
+  const base = URLScheme.forRunningScript();
+  return base + (base.indexOf("?") >= 0 ? "&" : "?") + "add=1";
 }
 
 // How many glasses you "should" have by a given hour
 function expectedBy(hour) {
   const f = Math.min(1, Math.max(0, (hour - DAY_START) / (DAY_END - DAY_START)));
   return Math.ceil(GOAL * f);
+}
+
+// "Next 16:00": the next reminder slot today where you'd be behind schedule.
+function nextCupText(log) {
+  const count = log[todayKey] || 0;
+  if (count >= GOAL) return "Goal reached";
+  const nowH = new Date().getHours() + new Date().getMinutes() / 60;
+  for (const h of REMINDER_HOURS) {
+    if (h > nowH && count < expectedBy(h)) return `Next ${String(h).padStart(2, "0")}:00`;
+  }
+  return "Next tomorrow";
 }
 
 const REMINDER_LINES = [
@@ -428,7 +477,7 @@ async function updateReminders(log) {
           ? `You're at ${count}/${GOAL} today. Aim for ${target} by now.`
           : `Aim for ${target}/${GOAL} glasses by ${h}:00.`;
         n.sound = "default";
-        n.openURL = URLScheme.forRunningScript();
+        n.openURL = addGlassURL();   // tapping the reminder adds a glass
         n.addAction("+1 glass 💧", addGlassURL());
         n.setTriggerDate(fire);
         await n.schedule();
@@ -498,6 +547,12 @@ const PAGE = `<!doctype html>
   .bar { height:8px; border-radius:4px; background:var(--l0); margin:10px 0 12px; overflow:hidden; }
   .bar div { height:100%; background:var(--l4); border-radius:4px; transition:width .2s; }
   .btns { display:grid; grid-template-columns:1fr 2fr; gap:8px; }
+  .logs { margin:-2px 0 12px; max-height:118px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .logs .row2 { display:flex; justify-content:space-between; font-size:13px; padding:5px 0;
+                border-top:1px solid #21262d; color:var(--text); }
+  .logs .row2:first-child { border-top:0; }
+  .logs .row2 span { color:var(--sub); }
+  .logs .none { font-size:13px; color:var(--sub); padding:4px 0; }
   button { border:0; border-radius:10px; padding:12px; font-size:16px; font-weight:600; }
   .minus { background:#21262d; color:var(--text); }
   .plus { background:var(--l3); color:#fff; }
@@ -521,6 +576,7 @@ const PAGE = `<!doctype html>
     <div class="card">
       <div class="line"><div class="d" id="iDate"></div><div class="n" id="iCount"></div></div>
       <div class="bar"><div id="iBar"></div></div>
+      <div class="logs" id="iLogs"></div>
       <div class="btns">
         <button class="minus" id="minus">− 1</button>
         <button class="plus" id="plus">+1 glass 💧</button>
@@ -530,6 +586,7 @@ const PAGE = `<!doctype html>
   </div>
 <script>
   window.entries = __DATA__;
+  window.times = __TIMES__;
   var GOAL = __GOAL__, WEEKS = 53;
   function pad(n) { return (n < 10 ? "0" : "") + n; }
   function key(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
@@ -602,13 +659,33 @@ const PAGE = `<!doctype html>
     document.getElementById("iDate").textContent = fmt(sel) + (sel === todayKey ? " · today" : "");
     document.getElementById("iCount").innerHTML = c + " <small>/ " + GOAL + "</small>";
     document.getElementById("iBar").style.width = Math.min(100, c / GOAL * 100) + "%";
+
+    // Log of when each glass was added (newest first)
+    var list = (times[sel] || []).slice();
+    var html = "";
+    var SRC = { notification: "Notification", shortcut: "Shortcut", app: "App", later: "Added later" };
+    var untimed = Math.max(0, c - list.length);
+    for (var j = list.length - 1; j >= 0; j--) {
+      var e = list[j];
+      html += '<div class="row2">' + (e.t || "No time") + ' <span>Glass ' + (untimed + j + 1) + ' · ' + (SRC[e.s] || e.s || "") + '</span></div>';
+    }
+    if (untimed > 0) html += '<div class="none">' + untimed + (untimed === 1 ? " glass" : " glasses") + ' without a time (logged before times were tracked)</div>';
+    if (!c) html = '<div class="none">No glasses logged this day.</div>';
+    document.getElementById("iLogs").innerHTML = html;
   }
 
+  function nowClock() { var d = new Date(); return pad(d.getHours()) + ":" + pad(d.getMinutes()); }
+
   document.getElementById("plus").addEventListener("click", function () {
-    entries[sel] = (entries[sel] || 0) + 1; render(); notifyChange();
+    entries[sel] = (entries[sel] || 0) + 1;
+    (times[sel] = times[sel] || []).push(sel === todayKey ? { t: nowClock(), s: "app" } : { t: "", s: "later" });
+    render(); notifyChange();
   });
   document.getElementById("minus").addEventListener("click", function () {
-    entries[sel] = Math.max(0, (entries[sel] || 0) - 1); render(); notifyChange();
+    if (!(entries[sel] > 0)) return;
+    entries[sel] = entries[sel] - 1;
+    if (times[sel] && times[sel].length > entries[sel]) times[sel].pop();
+    render(); notifyChange();
   });
 
   // Scriptable reads this a few times per second to save changes.
@@ -619,17 +696,18 @@ const PAGE = `<!doctype html>
 </script>
 </body></html>`;
 
-async function showInteractive(log) {
+async function showInteractive(log, times) {
   const before = JSON.stringify(log);
+  const timesBefore = JSON.stringify(times);
   const wv = new WebView();
-  await wv.loadHTML(PAGE.replace("__DATA__", before).replace("__GOAL__", String(GOAL)));
+  await wv.loadHTML(PAGE.replace("__DATA__", before).replace("__TIMES__", timesBefore).replace("__GOAL__", String(GOAL)));
   await wv.present(true);
   try {
-    const out = await wv.evaluateJavaScript("JSON.stringify(window.entries)");
-    if (out && out !== before) {
-      const after = JSON.parse(out);
-      saveLog(after);
-      return after;
+    const out = JSON.parse(await wv.evaluateJavaScript("JSON.stringify({ e: window.entries, t: window.times })"));
+    if (JSON.stringify(out.t) !== timesBefore) saveTimes(out.t);
+    if (JSON.stringify(out.e) !== before) {
+      saveLog(out.e);
+      return out.e;
     }
   } catch (e) {
     console.error("Could not save changes: " + e);
@@ -638,24 +716,47 @@ async function showInteractive(log) {
 }
 
 // ---------- main ----------
+// Set to true to get a notification on every run showing what the script received.
+const DEBUG = false;
+
 let log = await loadLog();
+const times = await loadTimes();
 const query = args.queryParameters || {};
+const notifInfo = (args.notification && args.notification.userInfo) || {};
+const notifId = (args.notification && args.notification.identifier) || "";
+// A tap on one of our reminders counts as +1, even if iOS drops the extra info.
+const tappedReminder = notifId.indexOf(REMINDER_PREFIX) === 0 || notifId === "water-test-reminder";
 const param =
   args.shortcutParameter ||
   (args.plainTexts && args.plainTexts.length ? args.plainTexts[0] : null);
 
-if (query.add || (args.notification && args.notification.userInfo && args.notification.userInfo.add)) {
+if (DEBUG && !config.runsInWidget) {
+  try {
+    const d = new Notification();
+    d.identifier = "water-debug-" + Date.now();
+    d.title = "🔧 Water debug";
+    d.body = `query=${JSON.stringify(query)} notif=${JSON.stringify(notifInfo)} ` +
+      `hasNotif=${!!args.notification} id=${notifId || "-"} ` +
+      `args=${Object.keys(args).filter(k => { const v = args[k]; return v && (!Array.isArray(v) || v.length) && (typeof v !== "object" || Object.keys(v).length); }).join(",") || "-"} ` +
+      `before=${log[todayKey] || 0} link=${addGlassURL()}`;
+    await d.schedule();
+  } catch (e) {}
+}
+
+if (query.add || notifInfo.add || tappedReminder) {
   // "+1 glass" tapped on a reminder: just add it and confirm, no calendar
-  log[todayKey] = (log[todayKey] || 0) + 1;
+  addGlass(log, times, "notification");
   saveLog(log);
+  saveTimes(times);
   await notifyLogged(log);
   await updateReminders(log);
 } else if (!config.runsInWidget && (param || config.runsWithSiri || !config.runsInApp)) {
   // Called from Shortcuts
   const p = String(param || "add").trim().toLowerCase();
-  if (p === "remove") log[todayKey] = Math.max(0, (log[todayKey] || 0) - 1);
-  else log[todayKey] = (log[todayKey] || 0) + 1;
+  if (p === "remove") removeGlass(log, times);
+  else addGlass(log, times, "shortcut");
   saveLog(log);
+  saveTimes(times);
   Script.setShortcutOutput(`💧 ${log[todayKey] || 0}/${GOAL} glasses today`);
   if (p !== "remove") await notifyLogged(log);
   await updateReminders(log);
@@ -663,8 +764,18 @@ if (query.add || (args.notification && args.notification.userInfo && args.notifi
   Script.setWidget(buildWidget(log, config.widgetFamily));
   await updateReminders(log);
 } else {
-  log = await showInteractive(log);
+  log = await showInteractive(log, times);
   await updateReminders(log);
+  if (DEBUG) {
+    const t = new Notification();
+    t.identifier = "water-test-reminder";
+    t.title = "🔧 Test reminder";
+    t.body = "Tap me, or long-press and tap +1 glass.";
+    t.openURL = addGlassURL();
+    t.addAction("+1 glass 💧", addGlassURL());
+    t.setTriggerDate(new Date(Date.now() + 15 * 1000));
+    await t.schedule();
+  }
 }
 
 Script.complete();
