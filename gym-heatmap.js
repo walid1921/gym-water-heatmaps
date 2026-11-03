@@ -106,7 +106,7 @@ function stats(visits) {
     const last = new Date(+p[0], +p[1] - 1, +p[2]);
     const t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     const days = Math.round((t0 - last) / 86400000);
-    lastText = days === 0 ? "Trained today 💪" : days === 1 ? "Last: yesterday" : `Last: ${days} days ago`;
+    lastText = days === 0 ? "Trained today" : days === 1 ? "Last: yesterday" : `Last: ${days} days ago`;
   }
 
   return {
@@ -336,7 +336,7 @@ function buildWidget(visits, family) {
 
   // ----- Lock Screen widgets -----
   if (family === "accessoryInline") {
-    w.addText(`🏋️ ${s.week}/${WEEKLY_GOAL} this week · 🔥 ${s.streak}`);
+    w.addText(`Gym ${s.week}/${WEEKLY_GOAL} this week · ${s.streak} wk streak`);
     return w;
   }
   if (family === "accessoryCircular") {
@@ -344,7 +344,7 @@ function buildWidget(visits, family) {
   }
   if (family === "accessoryRectangular") {
     w.setPadding(2, 2, 2, 2);
-    const t = w.addText(`🏋️ ${s.week} this week · 🔥 ${s.streak}`);
+    const t = w.addText(`Gym · ${s.week} this week · ${s.streak} wk streak`);
     t.font = Font.boldSystemFont(11);
     t.lineLimit = 1;
     t.minimumScaleFactor = 0.7;
@@ -367,10 +367,10 @@ function buildWidget(visits, family) {
 
   const header = w.addStack();
   header.centerAlignContent();
-  addText(header, "🏋️ Gym", Font.boldSystemFont(14), COLORS.text);
+  addText(header, "Gym", Font.boldSystemFont(14), COLORS.text);
   header.addSpacer();
   addText(header,
-    small ? `🔥 ${s.streak}` : `🔥 ${s.streak} wk streak · ${s.week} this week`,
+    small ? `${s.streak} wk streak` : `${s.streak} wk streak · ${s.week} this week`,
     Font.mediumSystemFont(11), COLORS.sub);
 
   w.addSpacer(small ? 6 : 8);

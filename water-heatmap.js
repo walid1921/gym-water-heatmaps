@@ -294,15 +294,15 @@ function buildWidget(log, family) {
   w.refreshAfterDate = new Date(Date.now() + 30 * 60 * 1000);
 
   if (family === "accessoryInline") {
-    w.addText(`💧 ${s.today}/${GOAL} glasses · 🔥 ${s.streak}`);
+    w.addText(`Water ${s.today}/${GOAL} · ${s.streak} day streak`);
     return w;
   }
   if (family === "accessoryCircular") {
-    return ringWidget(w, s.today / GOAL, `${s.today}/${GOAL}`, "💧");
+    return ringWidget(w, s.today / GOAL, `${s.today}/${GOAL}`, "water");
   }
   if (family === "accessoryRectangular") {
     w.setPadding(2, 2, 2, 2);
-    const t = w.addText(`💧 ${s.today}/${GOAL} today · 🔥 ${s.streak}`);
+    const t = w.addText(`Water · ${s.today}/${GOAL} today · ${s.streak} day streak`);
     t.font = Font.boldSystemFont(11);
     t.lineLimit = 1;
     t.minimumScaleFactor = 0.7;
@@ -323,9 +323,9 @@ function buildWidget(log, family) {
 
   const header = w.addStack();
   header.centerAlignContent();
-  addText(header, "💧 Water", Font.boldSystemFont(14), COLORS.text);
+  addText(header, "Water", Font.boldSystemFont(14), COLORS.text);
   header.addSpacer();
-  addText(header, small ? `${s.today}/${GOAL}` : `${s.today}/${GOAL} today · 🔥 ${s.streak}`,
+  addText(header, small ? `${s.today}/${GOAL}` : `${s.today}/${GOAL} today · ${s.streak} day streak`,
     Font.mediumSystemFont(11), COLORS.sub);
 
   w.addSpacer(4);
@@ -344,9 +344,9 @@ function buildWidget(log, family) {
   w.addSpacer();
   const f = w.addStack();
   if (small) {
-    addText(f, `🔥 ${s.streak} days`, Font.systemFont(10), COLORS.sub);
+    addText(f, `${s.streak} day streak`, Font.systemFont(10), COLORS.sub);
   } else {
-    const left = s.today >= GOAL ? "Goal reached 🎉" : `${GOAL - s.today} to go today`;
+    const left = s.today >= GOAL ? "Goal reached" : `${GOAL - s.today} to go today`;
     addText(f, left, Font.systemFont(11), COLORS.sub);
     f.addSpacer();
     addText(f, `avg ${s.avg7}/day (7 days)`, Font.systemFont(11), COLORS.sub);
