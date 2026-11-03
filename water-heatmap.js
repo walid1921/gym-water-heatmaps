@@ -360,8 +360,10 @@ function buildWidget(log, family) {
 // ---------- notifications ----------
 const REMINDER_PREFIX = "water-reminder-";
 
+// Link behind the "+1 glass" button on notifications.
+// Built by hand so the "add" flag always reaches the script as a query parameter.
 function addGlassURL() {
-  return URLScheme.forRunningScript() + "?add=1";
+  return "scriptable:///run?scriptName=" + encodeURIComponent(Script.name()) + "&add=1";
 }
 
 // How many glasses you "should" have by a given hour
@@ -642,12 +644,11 @@ const param =
   args.shortcutParameter ||
   (args.plainTexts && args.plainTexts.length ? args.plainTexts[0] : null);
 
-if (query.add) {
-  // "+1 glass" tapped on a reminder
+if (query.add || (args.notification && args.notification.userInfo && args.notification.userInfo.add)) {
+  // "+1 glass" tapped on a reminder: just add it and confirm, no calendar
   log[todayKey] = (log[todayKey] || 0) + 1;
   saveLog(log);
-  await updateReminders(log);
-  log = await showInteractive(log);
+  await notifyLogged(log);
   await updateReminders(log);
 } else if (!config.runsInWidget && (param || config.runsWithSiri || !config.runsInApp)) {
   // Called from Shortcuts
