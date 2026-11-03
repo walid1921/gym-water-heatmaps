@@ -10,6 +10,7 @@
 const GOAL = 8;                                  // glasses per day
 const REMINDER_HOURS = [9, 11, 13, 15, 17, 19, 21];
 const DAY_START = 8, DAY_END = 22;               // used to decide if you're "behind"
+const SUMMARY_HOUR = 21, SUMMARY_MINUTE = 30;    // evening summary time
 
 const FILE_NAME = "water-log.json";
 const COLORS = {
@@ -373,7 +374,8 @@ const REMINDER_LINES = [
   "Don't forget to drink something 💦",
 ];
 
-// Plans reminders for the rest of today (only where you're behind) and the next 2 days.
+// Plans reminders for the rest of today (only where you're behind) and the next 2 days,
+// plus an evening summary each day.
 async function updateReminders(log) {
   try {
     const pending = await Notification.allPending();
@@ -383,6 +385,30 @@ async function updateReminders(log) {
     for (let dayOffset = 0; dayOffset < 3; dayOffset++) {
       const day = addDays(today, dayOffset);
       const count = log[key(day)] || 0;
+      // Evening summary (always sent; text depends on how much you drank)
+      const sumAt = new Date(day.getFullYear(), day.getMonth(), day.getDate(), SUMMARY_HOUR, SUMMARY_MINUTE, 0);
+      if (sumAt > now) {
+        const n = new Notification();
+        n.identifier = `${REMINDER_PREFIX}${key(day)}-summary`;
+        n.threadIdentifier = "water-summary";
+        const streak = dayOffset === 0 ? stats(log).streak : 0;
+        if (count >= GOAL) {
+          n.title = `🎉 Goal reached: ${count}/${GOAL} glasses`;
+          n.body = streak > 1 ? `🔥 ${streak}-day streak. Great job staying hydrated!` : "Great job staying hydrated today!";
+        } else if (count >= GOAL - 2) {
+          n.title = `💧 You drank ${count}/${GOAL} today`;
+          n.body = `${GOAL - count} more before bed?`;
+        } else {
+          n.title = `😬 Only ${count}/${GOAL} glasses today`;
+          n.body = "Have one now, and let's do better tomorrow.";
+        }
+        n.sound = "default";
+        n.openURL = URLScheme.forRunningScript();
+        if (count < GOAL) n.addAction("+1 glass 💧", addGlassURL());
+        n.setTriggerDate(sumAt);
+        await n.schedule();
+      }
+
       for (let i = 0; i < REMINDER_HOURS.length; i++) {
         const h = REMINDER_HOURS[i];
         const fire = new Date(day.getFullYear(), day.getMonth(), day.getDate(), h, 0, 0);

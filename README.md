@@ -42,12 +42,14 @@ const WEEKLY_GOAL = 3;     // visits per week for the Lock Screen ring
 - **Interactive calendar**: big **+1 glass** / **−1** buttons; tap any past day to fix its count.
 - **Smart reminders** at 9, 11, 13, 15, 17, 19 and 21 o'clock, only when you're behind schedule.
   Long-press a reminder and tap **+1 glass 💧** to log straight from the notification.
+- **Evening summary** at 21:30: 🎉 goal reached (with streak), 💧 "6/8, 2 more before bed?", or 😬 "only 2/8".
 - **Lock Screen**: progress ring for today's glasses (circular), mini heatmap of the last 16 weeks (rectangular), and a one-line summary (inline).
 
 ### Settings (top of the script)
 ```js
 const GOAL = 8;                                  // glasses per day
 const REMINDER_HOURS = [9, 11, 13, 15, 17, 19, 21];
+const SUMMARY_HOUR = 21, SUMMARY_MINUTE = 30;    // evening summary time
 ```
 
 ---
