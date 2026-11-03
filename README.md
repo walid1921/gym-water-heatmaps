@@ -14,22 +14,21 @@ Free, no Apple Developer account, no Mac needed, and nothing to re-sign every we
 
 ### Features
 - **Auto-logging**: a Shortcuts "Arrive" automation marks the day when you reach your gym.
-- **Widget**: last month plus the coming months, weekday and month labels, thin month dividers, today outlined.
-- **Colors**: 🟩 gym day · 🟥 missed day (50% red) · ⬛ rest day.
-  A day counts as *missed* from the 3rd day in a row without the gym.
-- **Interactive calendar**: tap the widget to scroll through the year; tap a day and set it to ✅ Gym, ❌ Missed or 😴 Rest.
-- **Stats**: this week, this month, last 12 months, week streak 🔥, "last visit X days ago".
+- **Widget**: clean, emoji-free design. Small dimmed title at the top; last month plus the coming months with weekday and month labels, thin month dividers and today outlined; small stats at the bottom (this week · this month · last visit).
+- **Colors**: 🟩 went · 🟧 didn't go (orange, 70%). Every past day since your first visit without a visit counts as *didn't go*; today only once it's over.
+- **Interactive calendar**: tap the widget to scroll through the year; tap a day and set it to **Went** or **Didn't go**.
+- **Stats**: this week, this month, last 12 months, total, "last visit X days ago".
 - **Notifications**
   - "🏋️ Gym day registered" when you arrive (once per day).
   - Duolingo-style nudge at 10 pm every night after 3 days without the gym, until you go again.
 - **Widget sizes**: small, medium, large.
-- **Lock Screen**: progress ring for visits this week (circular), mini heatmap of the last 16 weeks (rectangular), and a one-line summary (inline).
+- **Lock Screen**: ring with gym days this week out of 7, e.g. `1/7` (circular), mini heatmap of the last 16 weeks (rectangular), and a one-line summary (inline).
 
 ### Settings (near the middle of the script)
 ```js
-const MISSED_DAYS = 3;     // days without the gym before reminders / red days start
+const MISSED_DAYS = 3;     // days without the gym before the nightly reminders start
 const REMINDER_HOUR = 22;  // reminder time (10 pm)
-const WEEKLY_GOAL = 3;     // visits per week for the Lock Screen ring
+const WEEKLY_GOAL = 7;     // Lock Screen shows gym days this week out of 7
 ```
 
 ---
@@ -38,7 +37,8 @@ const WEEKLY_GOAL = 3;     // visits per week for the Lock Screen ring
 
 ### Features
 - **Intensity heatmap**: squares get brighter blue the more you drink, bright blue when you hit your goal.
-- **Widget**: thin progress bar for today, goal streak, 7-day average.
+- **Widget**: same clean layout as the gym widget. Small dimmed title at the top; thin progress bar for today at the bottom with small stats (today `3/8` · "2 days in a row" · 7-day average).
+- **Days in a row**: how many days in a row you reached your goal (today counts once you reach it).
 - **Interactive calendar**: big **+1 glass** / **−1** buttons; tap any past day to fix its count.
 - **Smart reminders** at 9, 11, 13, 15, 17, 19 and 21 o'clock, only when you're behind schedule.
   Long-press a reminder and tap **+1 glass 💧** to log straight from the notification.
@@ -98,7 +98,7 @@ Everything is stored as small JSON files in **iCloud Drive → Scriptable** (or 
 | File | Contents |
 | --- | --- |
 | `gym-visits.json` | List of gym days, e.g. `["2026-11-02"]` |
-| `gym-status.json` | Days you set by hand: `{ "missed": [...], "rest": [...] }` |
+| `gym-status.json` | Days you marked *didn't go* by hand: `{ "missed": [...] }` |
 | `water-log.json` | Glasses per day, e.g. `{ "2026-11-03": 5 }` |
 
 These files are personal data and are not part of this repository.
