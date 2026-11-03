@@ -15,6 +15,7 @@ const COLORS = {
   missed: new Color("#f85149", 0.5),
   divider: new Color("#ffffff", 0.2),
   text: new Color("#e6edf3"),
+  title: new Color("#e6edf3", 0.5),
   sub: new Color("#8b949e"),
 };
 
@@ -367,7 +368,7 @@ function buildWidget(visits, family) {
 
   const header = w.addStack();
   header.centerAlignContent();
-  addText(header, "Gym", Font.boldSystemFont(14), COLORS.text);
+  addText(header, "Gym", Font.boldSystemFont(14), COLORS.title);
   header.addSpacer();
   addText(header,
     small ? `${s.streak} wk streak` : `${s.streak} wk streak · ${s.week} this week`,

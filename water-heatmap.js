@@ -16,6 +16,7 @@ const FILE_NAME = "water-log.json";
 const COLORS = {
   bg: new Color("#0d1117"),
   text: new Color("#e6edf3"),
+  title: new Color("#e6edf3", 0.5),
   sub: new Color("#8b949e"),
   todayOutline: new Color("#8b949e"),
   future: new Color("#161b22"),
@@ -323,15 +324,18 @@ function buildWidget(log, family) {
 
   const header = w.addStack();
   header.centerAlignContent();
-  addText(header, "Water", Font.boldSystemFont(14), COLORS.text);
+  // Title · progress bar · count, spread across the row
+  addText(header, "Water", Font.boldSystemFont(14), COLORS.title);
   header.addSpacer();
-  addText(header, small ? `${s.today}/${GOAL}` : `${s.today}/${GOAL} today · ${s.streak} day streak`,
-    Font.mediumSystemFont(11), COLORS.sub);
+  const countText = `${s.today}/${GOAL}`;
+  const titleW = 44, countW = countText.length * 7 + 4, gaps = 2 * (small ? 8 : 12);
+  const barW = Math.max(24, contentW - titleW - countW - gaps);
+  const bar = header.addImage(drawProgress(barW, s.today / GOAL));
+  bar.imageSize = new Size(barW, 3);
+  header.addSpacer();
+  addText(header, countText, Font.mediumSystemFont(11), COLORS.sub);
 
-  w.addSpacer(4);
-  const bar = w.addImage(drawProgress(contentW, s.today / GOAL));
-  bar.imageSize = new Size(contentW, 3);
-  w.addSpacer(small ? 4 : 6);
+  w.addSpacer(small ? 6 : 8);
 
   const widgetH = small ? widgetWidth(family) : Math.round(widgetWidth(family) * (large ? 1.05 : 0.47));
   const reserved = 24 + 17 + 8 + (large ? 90 : 18) + 13; // same sizing as the gym widget
@@ -346,7 +350,7 @@ function buildWidget(log, family) {
   if (small) {
     addText(f, `${s.streak} day streak`, Font.systemFont(10), COLORS.sub);
   } else {
-    const left = s.today >= GOAL ? "Goal reached" : `${GOAL - s.today} to go today`;
+    const left = `${s.streak} day streak · ` + (s.today >= GOAL ? "goal reached" : `${GOAL - s.today} to go`);
     addText(f, left, Font.systemFont(11), COLORS.sub);
     f.addSpacer();
     addText(f, `avg ${s.avg7}/day (7 days)`, Font.systemFont(11), COLORS.sub);
