@@ -273,6 +273,10 @@ function ringWidget(w, value, big, small) {
   return w;
 }
 
+function inARow(n) {
+  return `${n} ${n === 1 ? "day" : "days"} in a row`;
+}
+
 function widgetWidth(family) {
   const s = Device.screenSize().width;
   if (family === "small") return Math.round(s * 0.4);
@@ -295,7 +299,7 @@ function buildWidget(log, family) {
   w.refreshAfterDate = new Date(Date.now() + 30 * 60 * 1000);
 
   if (family === "accessoryInline") {
-    w.addText(`Water ${s.today}/${GOAL} · ${s.streak} day streak`);
+    w.addText(`Water ${s.today}/${GOAL} · ${inARow(s.streak)}`);
     return w;
   }
   if (family === "accessoryCircular") {
@@ -303,7 +307,7 @@ function buildWidget(log, family) {
   }
   if (family === "accessoryRectangular") {
     w.setPadding(2, 2, 2, 2);
-    const t = w.addText(`Water · ${s.today}/${GOAL} today · ${s.streak} day streak`);
+    const t = w.addText(`Water · ${s.today}/${GOAL} today · ${inARow(s.streak)}`);
     t.font = Font.boldSystemFont(11);
     t.lineLimit = 1;
     t.minimumScaleFactor = 0.7;
@@ -324,16 +328,7 @@ function buildWidget(log, family) {
 
   const header = w.addStack();
   header.centerAlignContent();
-  // Title · progress bar · count, spread across the row
-  addText(header, "Water", Font.boldSystemFont(14), COLORS.title);
-  header.addSpacer();
-  const countText = `${s.today}/${GOAL}`;
-  const titleW = 44, countW = countText.length * 7 + 4, gaps = 2 * (small ? 8 : 12);
-  const barW = Math.max(24, contentW - titleW - countW - gaps);
-  const bar = header.addImage(drawProgress(barW, s.today / GOAL));
-  bar.imageSize = new Size(barW, 3);
-  header.addSpacer();
-  addText(header, countText, Font.mediumSystemFont(11), COLORS.sub);
+  addText(header, "Water", Font.boldSystemFont(11), COLORS.title);
 
   w.addSpacer(small ? 6 : 8);
 
@@ -345,15 +340,18 @@ function buildWidget(log, family) {
   img.imageSize = gridImg.size;
   img.centerAlignImage();
 
+  // Bottom: progress bar, then small stats (spread left / right)
   w.addSpacer();
+  const bar = w.addImage(drawProgress(contentW, s.today / GOAL));
+  bar.imageSize = new Size(contentW, 3);
+  w.addSpacer(4);
   const f = w.addStack();
-  if (small) {
-    addText(f, `${s.streak} day streak`, Font.systemFont(10), COLORS.sub);
-  } else {
-    const left = `${s.streak} day streak · ` + (s.today >= GOAL ? "goal reached" : `${GOAL - s.today} to go`);
-    addText(f, left, Font.systemFont(11), COLORS.sub);
+  addText(f, `${s.today}/${GOAL} today`, Font.systemFont(9), COLORS.sub);
+  f.addSpacer();
+  addText(f, inARow(s.streak), Font.systemFont(9), COLORS.sub);
+  if (!small) {
     f.addSpacer();
-    addText(f, `avg ${s.avg7}/day (7 days)`, Font.systemFont(11), COLORS.sub);
+    addText(f, `avg ${s.avg7}/day`, Font.systemFont(9), COLORS.sub);
   }
   return w;
 }
